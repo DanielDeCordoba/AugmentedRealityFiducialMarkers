@@ -1,0 +1,9 @@
+# Exported from 3D Builder
+
+newmtl green3
+Kd 0.000000 0.698039 0.078431
+map_Kd models/arrow/green3.png
+
+newmtl green0
+Kd 0.000000 1.000000 0.113725
+map_Kd models/arrow/green1.png
