@@ -13,6 +13,7 @@ from webcam import Webcam
 from markers import Markers
 from features import Features
 from constants import *
+from objloader import *
 
 class SaltwashAR:
  
@@ -30,6 +31,9 @@ class SaltwashAR:
         self.rocky_robot = RockyRobot()
         self.sporty_robot = SportyRobot()
 
+        # initialize shapes
+        self.arrow = [None, None, None, None]
+
         # initialise webcam
         self.webcam = Webcam()
 
@@ -43,6 +47,10 @@ class SaltwashAR:
         # initialise texture
         self.texture_background = None
 
+        # initialize face classifier
+        self.faceCascade = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
+        self.faceslist = None
+
     def _init_gl(self):
         glClearColor(0.0, 0.0, 0.0, 0.0)
         glClearDepth(1.0)
@@ -53,6 +61,12 @@ class SaltwashAR:
         glLoadIdentity()
         gluPerspective(33.7, 1.3, 0.1, 100.0)
         glMatrixMode(GL_MODELVIEW)
+
+        # load shapes
+        self.arrow = [OBJ('models/arrow/arrow0.obj'),
+                      OBJ('models/arrow/arrow3.obj'),
+                      OBJ('models/arrow/arrow2.obj'),
+                      OBJ('models/arrow/arrow1.obj')]
 
         # load robots frames
         self.rocky_robot.load_frames(self.config_provider.animation)
@@ -91,6 +105,18 @@ class SaltwashAR:
         
         # let features update background image
         image = self.features.update_background_image(image)
+
+        # recognize faces and draw square
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        self.faceslist = self.faceCascade.detectMultiScale(
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(30, 30),
+            flags=cv2.cv.CV_HAAR_SCALE_IMAGE
+        )
+        for (x, y, w, h) in self.faceslist:
+            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
         # convert image to OpenGL texture format
         bg_image = cv2.flip(image, 0)
@@ -157,7 +183,8 @@ class SaltwashAR:
             glLoadMatrixd(view_matrix)
 
             if marker_name == ROCKY_ROBOT:
-                self.rocky_robot.next_frame(marker_rotation, self.features.is_speaking(), self.features.get_emotion())
+                glCallList(self.arrow[marker_rotation].gl_list)
+                # self.rocky_robot.next_frame(marker_rotation, self.features.is_speaking(), self.features.get_emotion())
             elif marker_name == SPORTY_ROBOT:
                 self.sporty_robot.next_frame(marker_rotation, self.features.is_speaking(), self.features.get_emotion())
 
@@ -175,7 +202,8 @@ class SaltwashAR:
         glutIdleFunc(self._draw_scene)
         self._init_gl()
         glutMainLoop()
- 
-# run an instance of SaltwashAR
-saltwashAR = SaltwashAR()
-saltwashAR.main()
+
+if __name__ == "__main__":
+    # run an instance of SaltwashAR
+    saltwashAR = SaltwashAR()
+    saltwashAR.main()
