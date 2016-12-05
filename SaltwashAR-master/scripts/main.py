@@ -78,10 +78,12 @@ class SaltwashAR:
         glMatrixMode(GL_MODELVIEW)
 
         # load shapes
-        self.arrow = OBJ('models/arrow/arrow0.obj')
+        self.arrow = OBJ('models/arrow/arrowC.obj')
         self.batman = OBJ('models/batman/batman1.obj')
         self.superman = OBJ('models/superman/superman0.obj')
-        # self.rock = OBJ('models/rock/rock.obj')
+        self.rockR = OBJ('models/rock/rockR.obj')
+        self.rockG = OBJ('models/rock/rockG.obj')
+        self.rockB = OBJ('models/rock/rockB.obj')
         # self.paper = OBJ('models/paper/paper.obj')
         # self.scissors = OBJ('models/scissors/scissors.obj')
 
@@ -215,7 +217,7 @@ class SaltwashAR:
         for i, marker in enumerate(markers):
 
             rvecs, tvecs, marker_rotation, marker_name, marker_coords = marker
-            
+
             # Filter weird changes that happen sometimes after 0 difference (Bug in markers?)
             diff0 = self.prev_tvects[0] - tvecs[0]
             diff1 = self.prev_tvects[1] - tvecs[1]
@@ -241,17 +243,17 @@ class SaltwashAR:
             rvecs[2] -= (math.pi * marker_rotation / 2.0)
             # print ">>>>>>", rvecs[2], tvecs[0], tvecs[1]
             if marker_rotation == 0:
-                tvecs[0] += (0.5) * (math.cos(rvecs[2]) - math.sin(rvecs[2]))
-                tvecs[1] += (0.5) * (math.cos(rvecs[2]) + math.sin(rvecs[2]))
+                tvecs[0] += (0.6) * (math.cos(rvecs[2]) - math.sin(rvecs[2]))
+                tvecs[1] += (0.6) * (math.cos(rvecs[2]) + math.sin(rvecs[2]))
             elif marker_rotation == 1:
-                tvecs[0] -= (0.5) * (math.cos(rvecs[2]) - math.sin(-rvecs[2]))
-                tvecs[1] += (0.5) * (math.cos(rvecs[2]) + math.sin(-rvecs[2]))
+                tvecs[0] -= (0.6) * (math.cos(rvecs[2]) - math.sin(-rvecs[2]))
+                tvecs[1] += (0.6) * (math.cos(rvecs[2]) + math.sin(-rvecs[2]))
             elif marker_rotation == 2:
-                tvecs[0] -= (0.5) * (math.cos(rvecs[2]) - math.sin(rvecs[2]))
-                tvecs[1] -= (0.5) * (math.cos(rvecs[2]) + math.sin(rvecs[2]))
+                tvecs[0] -= (0.6) * (math.cos(rvecs[2]) - math.sin(rvecs[2]))
+                tvecs[1] -= (0.6) * (math.cos(rvecs[2]) + math.sin(rvecs[2]))
             else: # 3
-                tvecs[0] += (0.5) * (math.cos(rvecs[2]) - math.sin(-rvecs[2]))
-                tvecs[1] -= (0.5) * (math.cos(rvecs[2]) + math.sin(-rvecs[2]))
+                tvecs[0] += (0.6) * (math.cos(rvecs[2]) - math.sin(-rvecs[2]))
+                tvecs[1] -= (0.6) * (math.cos(rvecs[2]) + math.sin(-rvecs[2]))
 
             # print rvecs[2], tvecs[0], tvecs[1]
 
@@ -294,6 +296,12 @@ class SaltwashAR:
                 glCallList(self.batman.gl_list)
             elif marker_name == M2:
                 glCallList(self.superman.gl_list)
+            elif marker_name == M3:
+                glCallList(self.rockR.gl_list)
+            elif marker_name == M4:
+                glCallList(self.rockG.gl_list)
+            elif marker_name == M5:
+                glCallList(self.rockB.gl_list)
 
             glColor3f(1.0, 1.0, 1.0)
             glPopMatrix()
