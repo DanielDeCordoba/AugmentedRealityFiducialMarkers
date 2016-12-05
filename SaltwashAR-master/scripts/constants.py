@@ -2,8 +2,16 @@
 # GNU GENERAL PUBLIC LICENSE Version 3 (full notice can be found at https://github.com/rdmilligan/SaltwashAR)
 
 # marker constants
-ROCKY_ROBOT = 'rocky_robot'
-SPORTY_ROBOT = 'sporty_robot'
+M0 = 'm0'
+M1 = 'm1'
+M2 = 'm2'
+M3 = 'm3'
+M4 = 'm4'
+M5 = 'm5'
+M6 = 'm6'
+M7 = 'm7'
+M8 = 'm8'
+M9 = 'm9'
 
 # emotion constants
 HAPPY = 'happy'

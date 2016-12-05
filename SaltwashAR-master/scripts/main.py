@@ -14,6 +14,7 @@ from markers import Markers
 from features import Features
 from constants import *
 from objloader import *
+import math
 
 class SaltwashAR:
  
@@ -23,7 +24,7 @@ class SaltwashAR:
                                [-1.0,-1.0,-1.0,-1.0],
                                [ 1.0, 1.0, 1.0, 1.0]])
 
-    def __init__(self):
+    def __init__(self, debugOn):
         # initialise config
         self.config_provider = ConfigProvider()
 
@@ -32,14 +33,18 @@ class SaltwashAR:
         self.sporty_robot = SportyRobot()
 
         # initialize shapes
-        self.arrow = [None, None, None, None]
+        self.arrow = None
+        self.batman = None
+        self.superman = None
 
         # initialise webcam
         self.webcam = Webcam()
 
         # initialise markers
-        self.markers = Markers()
+        self.markers = Markers(debugOn)
+        print "Debug mode: {}".format(debugOn)
         self.markers_cache = None
+        self.cache_counter = 0
 
         # initialise features
         self.features = Features(self.config_provider)
@@ -48,8 +53,18 @@ class SaltwashAR:
         self.texture_background = None
 
         # initialize face classifier
-        self.faceCascade = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
+        self.faceCascade = cv2.CascadeClassifier("cascades/haarcascade_frontalface_default.xml")
         self.faceslist = None
+
+        # initialize hands classifier
+        self.okeyCascade = cv2.CascadeClassifier("cascades/haarcascade_okaygesture.xml")
+        self.okeylist = None
+        self.peaceCascade = cv2.CascadeClassifier("cascades/haarcascade_vickygesture.xml")
+        self.peacelist = None
+
+        # initialize filters
+        self.prev_tvects = [0.0, 0.0]
+        self.prev_rvects = [0.0]
 
     def _init_gl(self):
         glClearColor(0.0, 0.0, 0.0, 0.0)
@@ -63,10 +78,12 @@ class SaltwashAR:
         glMatrixMode(GL_MODELVIEW)
 
         # load shapes
-        self.arrow = [OBJ('models/arrow/arrow0.obj'),
-                      OBJ('models/arrow/arrow3.obj'),
-                      OBJ('models/arrow/arrow2.obj'),
-                      OBJ('models/arrow/arrow1.obj')]
+        self.arrow = OBJ('models/arrow/arrow0.obj')
+        self.batman = OBJ('models/batman/batman1.obj')
+        self.superman = OBJ('models/superman/superman0.obj')
+        # self.rock = OBJ('models/rock/rock.obj')
+        # self.paper = OBJ('models/paper/paper.obj')
+        # self.scissors = OBJ('models/scissors/scissors.obj')
 
         # load robots frames
         self.rocky_robot.load_frames(self.config_provider.animation)
@@ -116,7 +133,28 @@ class SaltwashAR:
             flags=cv2.cv.CV_HAAR_SCALE_IMAGE
         )
         for (x, y, w, h) in self.faceslist:
-            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)  #Green
+
+        # # recognize hands and draw square
+        # self.okeylist = self.okeyCascade.detectMultiScale(
+        #     gray,
+        #     scaleFactor=1.1,
+        #     minNeighbors=9,
+        #     minSize=(30, 30),
+        #     flags=cv2.cv.CV_HAAR_SCALE_IMAGE
+        # )
+        # for (x, y, w, h) in self.okeylist:
+        #     cv2.rectangle(image, (x, y), (x + w, y + h), (0, 0, 255), 2)  #Red
+        #
+        # self.peacelist = self.peaceCascade.detectMultiScale(
+        #     gray,
+        #     scaleFactor=1.1,
+        #     minNeighbors=36,
+        #     minSize=(30, 30),
+        #     flags=cv2.cv.CV_HAAR_SCALE_IMAGE
+        # )
+        # for (x, y, w, h) in self.peacelist:
+        #     cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 2)  #Blue
 
         # convert image to OpenGL texture format
         bg_image = cv2.flip(image, 0)
@@ -134,12 +172,12 @@ class SaltwashAR:
         # draw background
         glBindTexture(GL_TEXTURE_2D, self.texture_background)
         glPushMatrix()
-        glTranslatef(0.0,0.0,-10.0)
+        glTranslatef(0.0,0.0,-20.0)
         glBegin(GL_QUADS)
-        glTexCoord2f(0.0, 1.0); glVertex3f(-4.0, -3.0, 0.0)
-        glTexCoord2f(1.0, 1.0); glVertex3f( 4.0, -3.0, 0.0)
-        glTexCoord2f(1.0, 0.0); glVertex3f( 4.0,  3.0, 0.0)
-        glTexCoord2f(0.0, 0.0); glVertex3f(-4.0,  3.0, 0.0)
+        glTexCoord2f(0.0, 1.0); glVertex3f(-8.0, -6.0, 0.0)
+        glTexCoord2f(1.0, 1.0); glVertex3f( 8.0, -6.0, 0.0)
+        glTexCoord2f(1.0, 0.0); glVertex3f( 8.0,  6.0, 0.0)
+        glTexCoord2f(0.0, 0.0); glVertex3f(-8.0,  6.0, 0.0)
         glEnd( )
         glPopMatrix()
 
@@ -155,16 +193,82 @@ class SaltwashAR:
 
         # manage markers cache
         if markers:
+            # if self.cache_counter < 2:
+            #     print "Ko before"
+            #     if self.markers_cache is not None:
+            #         print "----------------------"
+            #         print "Overwritten with cache", markers, self.markers_cache
+            #         print "----------------------"
+            #         markers = self.markers_cache
             self.markers_cache = markers
+            self.cache_counter = 2
         elif self.markers_cache: 
             markers = self.markers_cache
-            self.markers_cache = None
+            # print "Cache"
+            self.cache_counter -= 1
+            if self.cache_counter <= 0:
+                self.markers_cache = None
+            # self.markers_cache = None
         else:
             return
 
-        for marker in markers:
+        for i, marker in enumerate(markers):
+
+            rvecs, tvecs, marker_rotation, marker_name, marker_coords = marker
             
-            rvecs, tvecs, marker_rotation, marker_name = marker
+            # Filter weird changes that happen sometimes after 0 difference (Bug in markers?)
+            diff0 = self.prev_tvects[0] - tvecs[0]
+            diff1 = self.prev_tvects[1] - tvecs[1]
+            diff = diff0*diff0 + diff1*diff1
+            print diff, self.prev_tvects[0], tvecs[0], self.prev_tvects[1], tvecs[1]
+            # if diff > 1.0:
+                # tmp0 = self.prev_tvects[0]
+                # tmp1 = self.prev_tvects[1]
+                # tmp2 = self.prev_rvects[0]
+                # print "Weird change"
+                # self.prev_tvects[0] = tvecs[0]
+                # self.prev_tvects[1] = tvecs[1]
+                # self.prev_rvects[0] = rvecs[2]
+                # tvecs[0] = tmp0
+                # tvecs[1] = tmp1
+                # rvecs[0] = tmp2
+            # else:
+                # self.prev_tvects[0] = tvecs[0]
+                # self.prev_tvects[1] = tvecs[1]
+                # self.prev_rvects[0] = rvecs[2]
+
+            # correct rotation and translation to center figures in marker
+            rvecs[2] -= (math.pi * marker_rotation / 2.0)
+            # print ">>>>>>", rvecs[2], tvecs[0], tvecs[1]
+            if marker_rotation == 0:
+                tvecs[0] += (0.5) * (math.cos(rvecs[2]) - math.sin(rvecs[2]))
+                tvecs[1] += (0.5) * (math.cos(rvecs[2]) + math.sin(rvecs[2]))
+            elif marker_rotation == 1:
+                tvecs[0] -= (0.5) * (math.cos(rvecs[2]) - math.sin(-rvecs[2]))
+                tvecs[1] += (0.5) * (math.cos(rvecs[2]) + math.sin(-rvecs[2]))
+            elif marker_rotation == 2:
+                tvecs[0] -= (0.5) * (math.cos(rvecs[2]) - math.sin(rvecs[2]))
+                tvecs[1] -= (0.5) * (math.cos(rvecs[2]) + math.sin(rvecs[2]))
+            else: # 3
+                tvecs[0] += (0.5) * (math.cos(rvecs[2]) - math.sin(-rvecs[2]))
+                tvecs[1] -= (0.5) * (math.cos(rvecs[2]) + math.sin(-rvecs[2]))
+
+            # print rvecs[2], tvecs[0], tvecs[1]
+
+            # rotate to look at closer face
+            if len(self.faceslist) > 0 and marker_name == M0:
+                # center of the marker
+                m_pos = [0.0, 0.0]
+                for pos in marker_coords:
+                    m_pos[0] += pos[0]
+                    m_pos[1] += pos[1]
+                m_pos[0] /= len(marker_coords)
+                m_pos[1] /= len(marker_coords)
+                # center of the face
+                p_pos = [self.faceslist[0][0] + self.faceslist[0][2]/2.0,
+                         self.faceslist[0][1] + self.faceslist[0][3]/2.0]
+
+                rvecs[2] = math.atan2((p_pos[1] - m_pos[1]), (p_pos[0] - m_pos[0]))
 
             # build view matrix
             rmtx = cv2.Rodrigues(rvecs)[0]
@@ -182,11 +286,14 @@ class SaltwashAR:
             glPushMatrix()
             glLoadMatrixd(view_matrix)
 
-            if marker_name == ROCKY_ROBOT:
-                glCallList(self.arrow[marker_rotation].gl_list)
+            if marker_name == M0:
+                glCallList(self.arrow.gl_list)
                 # self.rocky_robot.next_frame(marker_rotation, self.features.is_speaking(), self.features.get_emotion())
-            elif marker_name == SPORTY_ROBOT:
-                self.sporty_robot.next_frame(marker_rotation, self.features.is_speaking(), self.features.get_emotion())
+            elif marker_name == M1:
+                # self.sporty_robot.next_frame(marker_rotation, self.features.is_speaking(), self.features.get_emotion())
+                glCallList(self.batman.gl_list)
+            elif marker_name == M2:
+                glCallList(self.superman.gl_list)
 
             glColor3f(1.0, 1.0, 1.0)
             glPopMatrix()
@@ -197,7 +304,7 @@ class SaltwashAR:
         glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
         glutInitWindowSize(640, 480)
         glutInitWindowPosition(100, 100)
-        glutCreateWindow('SaltwashAR')
+        glutCreateWindow('Marker based AR')
         glutDisplayFunc(self._draw_scene)
         glutIdleFunc(self._draw_scene)
         self._init_gl()
@@ -205,5 +312,5 @@ class SaltwashAR:
 
 if __name__ == "__main__":
     # run an instance of SaltwashAR
-    saltwashAR = SaltwashAR()
+    saltwashAR = SaltwashAR(len(sys.argv) > 1)
     saltwashAR.main()

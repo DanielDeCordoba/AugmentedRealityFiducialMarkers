@@ -11,10 +11,10 @@ def _order_points(points):
     
     ordered_points = np.zeros((4,2), dtype='float32')
 
-    ordered_points[0] = points[np.argmin(s)]
-    ordered_points[2] = points[np.argmax(s)]
-    ordered_points[1] = points[np.argmin(diff)]
-    ordered_points[3] = points[np.argmax(diff)]
+    ordered_points[0] = points[np.argmin(s)] #bottom left
+    ordered_points[2] = points[np.argmax(s)] #top right
+    ordered_points[1] = points[np.argmin(diff)] #bottom right
+    ordered_points[3] = points[np.argmax(diff)] #top left
 
     return ordered_points
 
