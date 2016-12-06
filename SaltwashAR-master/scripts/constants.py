@@ -12,6 +12,7 @@ M6 = 'm6'
 M7 = 'm7'
 M8 = 'm8'
 M9 = 'm9'
+M10 = 'm10'
 
 # emotion constants
 HAPPY = 'happy'
