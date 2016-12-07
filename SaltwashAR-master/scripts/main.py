@@ -81,11 +81,15 @@ class SaltwashAR:
         self.arrow = OBJ('models/arrow/arrowC.obj')
         self.batman = OBJ('models/batman/batman1.obj')
         self.superman = OBJ('models/superman/superman0.obj')
-        self.rockR = OBJ('models/rock/rockR.obj')
-        self.rockG = OBJ('models/rock/rockG.obj')
-        self.rockB = OBJ('models/rock/rockB.obj')
-        # self.paper = OBJ('models/paper/paper.obj')
-        # self.scissors = OBJ('models/scissors/scissors.obj')
+        self.rockR = OBJ('models/rock/rockRR.obj')
+        self.rockG = OBJ('models/rock/rockGG.obj')
+        self.rockB = OBJ('models/rock/rockBB.obj')
+        self.paperR = OBJ('models/paper/paperRR.obj')
+        self.paperB = OBJ('models/paper/paperBB.obj')
+        self.paperG = OBJ('models/paper/paperGG.obj')
+        self.scissorsR = OBJ('models/scissors/scissorsRR.obj')
+        self.scissorsG = OBJ('models/scissors/scissorsGG.obj')
+        self.scissorsB = OBJ('models/scissors/scissorsBB.obj')
 
         # load robots frames
         self.rocky_robot.load_frames(self.config_provider.animation)
@@ -134,8 +138,25 @@ class SaltwashAR:
             minSize=(30, 30),
             flags=cv2.cv.CV_HAAR_SCALE_IMAGE
         )
+        bigface = 0
+        iternum = 0
+        bigfacedict = {}
         for (x, y, w, h) in self.faceslist:
-            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)  #Green
+            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green
+            if (w + h) > bigface:
+                bigface = w + h
+                self.faceindex = iternum
+            bigfacedict[iternum] = w + h
+            iternum += 1
+
+        x = sorted(bigfacedict.items(), key=lambda x: x[1], reverse=True)
+        y = []
+        for a, b in x:
+            y.append(a)
+        if len(x) > 0:
+            self.faceindex = y
+        else:
+            self.faceindex = None
 
         # # recognize hands and draw square
         # self.okeylist = self.okeyCascade.detectMultiScale(
@@ -206,13 +227,40 @@ class SaltwashAR:
             self.cache_counter = 2
         elif self.markers_cache: 
             markers = self.markers_cache
-            # print "Cache"
+            print "Cache"
             self.cache_counter -= 1
             if self.cache_counter <= 0:
                 self.markers_cache = None
             # self.markers_cache = None
         else:
             return
+
+        # examine markers to determine if we are playing rock, paper, scissors
+        markersRockPaperScissors = {}
+        rockPaperScissors = [0, 0, 0]  # [rock, paper, scissors]
+        for i, marker in enumerate(markers):
+            marker_name = marker[3]
+            if marker_name == M7 or marker_name == M8 or marker_name == M10:
+                markersRockPaperScissors[i] = [marker_name, False]
+                if marker_name == M7:  # Rock
+                    rockPaperScissors[0] += 1
+                elif marker_name == M8:  # Paper
+                    rockPaperScissors[1] += 1
+                else:  # Scissors
+                    rockPaperScissors[2] += 1
+        # determine results rock, paper, scissors
+        if len(markersRockPaperScissors) > 1:
+            for pos in markersRockPaperScissors:
+                marker_name = markersRockPaperScissors[pos][0]
+                if marker_name == M7 and rockPaperScissors[0] == 1 and rockPaperScissors[1] == 0 and rockPaperScissors[2] > 0:  # Rock
+                    markersRockPaperScissors[pos][1] = True
+                elif marker_name == M8 and rockPaperScissors[0] > 0 and rockPaperScissors[1] == 1 and rockPaperScissors[2] == 0:  # Paper
+                    markersRockPaperScissors[pos][1] = True
+                elif marker_name == M10 and rockPaperScissors[0] == 0 and rockPaperScissors[1] > 0 and rockPaperScissors[2] == 1:  # Scissors
+                    markersRockPaperScissors[pos][1] = True
+
+        print markersRockPaperScissors
+        print rockPaperScissors
 
         for i, marker in enumerate(markers):
 
@@ -267,8 +315,8 @@ class SaltwashAR:
                 m_pos[0] /= len(marker_coords)
                 m_pos[1] /= len(marker_coords)
                 # center of the face
-                p_pos = [self.faceslist[0][0] + self.faceslist[0][2]/2.0,
-                         self.faceslist[0][1] + self.faceslist[0][3]/2.0]
+                p_pos = [self.faceslist[self.faceindex[0]][0] + self.faceslist[self.faceindex[0]][2]/2.0,
+                         self.faceslist[self.faceindex[0]][1] + self.faceslist[self.faceindex[0]][3]/2.0]
 
                 rvecs[2] = math.atan2((p_pos[1] - m_pos[1]), (p_pos[0] - m_pos[0]))
 
@@ -302,6 +350,33 @@ class SaltwashAR:
                 glCallList(self.rockG.gl_list)
             elif marker_name == M5:
                 glCallList(self.rockB.gl_list)
+            # elif marker_name == M6:
+                # glCallList(self.paperR.gl_list)
+                # pass
+            elif marker_name == M8:  # Paper
+                if len(markersRockPaperScissors) > 1:
+                    if markersRockPaperScissors[i][1]:
+                        glCallList(self.paperG.gl_list)
+                    else:
+                        glCallList(self.paperR.gl_list)
+                else:
+                    glCallList(self.paperB.gl_list)
+            elif marker_name == M10:  # Scissors
+                if len(markersRockPaperScissors) > 1:
+                    if markersRockPaperScissors[i][1]:
+                        glCallList(self.scissorsG.gl_list)
+                    else:
+                        glCallList(self.scissorsR.gl_list)
+                else:
+                    glCallList(self.scissorsB.gl_list)
+            elif marker_name == M7:  # Rock
+                if len(markersRockPaperScissors) > 1:
+                    if markersRockPaperScissors[i][1]:
+                        glCallList(self.rockG.gl_list)
+                    else:
+                        glCallList(self.rockR.gl_list)
+                else:
+                    glCallList(self.rockB.gl_list)
 
             glColor3f(1.0, 1.0, 1.0)
             glPopMatrix()
